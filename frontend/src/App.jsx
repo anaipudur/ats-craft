@@ -6,6 +6,7 @@ import ATSChecker from './components/ATSChecker';
 import AuthModal from './components/AuthModal';
 import SEOContent from './components/SEOContent';
 import AdSenseBanner from './components/AdSenseBanner';
+import PolicyModal from './components/PolicyModal';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 const INITIAL_RESUME_DATA = {
@@ -84,6 +85,13 @@ export default function App() {
   const [activeTemplate, setActiveTemplate] = useState('classic-ats');
   const [isAtsOpen, setIsAtsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isPolicyOpen, setIsPolicyOpen] = useState(false);
+  const [policyTab, setPolicyTab] = useState('privacy');
+
+  const openPolicyModal = (tab) => {
+    setPolicyTab(tab);
+    setIsPolicyOpen(true);
+  };
   const [user, setUser] = useState(null);
   const [atsResults, setAtsResults] = useState({
     match_score: 85,
@@ -223,12 +231,19 @@ export default function App() {
         <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 ATSCraft Pro. Powered by Python, React, Tailwind CSS & Supabase.</p>
           <div className="flex items-center gap-4 text-slate-400">
-            <a href="#privacy" className="hover:text-indigo-400">Privacy Policy</a>
-            <a href="#terms" className="hover:text-indigo-400">Terms of Service</a>
-            <a href="#contact" className="hover:text-indigo-400">Contact Us</a>
+            <button onClick={() => openPolicyModal('privacy')} className="hover:text-indigo-400 transition">Privacy Policy</button>
+            <button onClick={() => openPolicyModal('terms')} className="hover:text-indigo-400 transition">Terms of Service</button>
+            <button onClick={() => openPolicyModal('contact')} className="hover:text-indigo-400 transition">Contact Us</button>
           </div>
         </div>
       </footer>
+
+      {/* Modal: Legal Policies & Contact Form */}
+      <PolicyModal
+        isOpen={isPolicyOpen}
+        onClose={() => setIsPolicyOpen(false)}
+        defaultTab={policyTab}
+      />
 
     </div>
   );
