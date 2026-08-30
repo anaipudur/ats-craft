@@ -1,8 +1,9 @@
 import React from 'react';
-import { FileText, Download, Sparkles, User, CheckCircle2, Shield, RefreshCw } from 'lucide-react';
+import { FileText, Download, Sparkles, User, RefreshCw, Loader2 } from 'lucide-react';
 
 export default function Navbar({ 
   onExportPdf, 
+  isExporting = false,
   onToggleAts, 
   atsScore, 
   user, 
@@ -97,10 +98,15 @@ export default function Navbar({
           {/* PDF Download Button */}
           <button
             onClick={onExportPdf}
-            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-95"
+            disabled={isExporting}
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export PDF</span>
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin text-indigo-200" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export PDF'}</span>
           </button>
 
           {/* Supabase User Account Button */}

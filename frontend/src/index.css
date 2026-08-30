@@ -24,26 +24,47 @@
 
 /* Vector ATS Print Styles for crisp PDF export */
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    size: letter portrait;
+    margin: 0;
   }
-  #resume-preview-container, #resume-preview-container * {
-    visibility: visible;
-  }
-  #resume-preview-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100% !important;
-    max-width: 100% !important;
+  
+  html, body, #root, div, main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
     box-shadow: none !important;
-    border: none !important;
-    background: white !important;
-    color: black !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    border-color: transparent !important;
   }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .no-print {
     display: none !important;
   }
+
+  #resume-preview-container {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+    padding: 0.35in !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
 }
+
+
+
