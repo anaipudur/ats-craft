@@ -130,9 +130,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
       
       {/* Top Header Leaderboard AdSense Slot */}
-      <div className="no-print bg-slate-950 border-b border-slate-800 px-4 py-2">
-        <AdSenseBanner type="leaderboard" slot="5566778899" className="my-0" />
-      </div>
+      <AdSenseBanner type="leaderboard" slot="5566778899" className="no-print my-0" />
 
       {/* Navbar Header */}
       <div className="no-print">
