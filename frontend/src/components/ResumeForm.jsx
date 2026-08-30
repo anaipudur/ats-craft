@@ -99,16 +99,17 @@ export default function ResumeForm({ resumeData, setResumeData }) {
       ...prev,
       skills: [
         ...prev.skills,
-        { category: 'Technical Skills', items: ['Python', 'React', 'MySQL'] }
+        { category: '', items: [], rawText: '' }
       ]
     }));
   };
 
   const updateSkillCategory = (index, category, itemsString) => {
-    const itemsArray = itemsString.split(',').map(s => s.trim()).filter(Boolean);
+    const rawText = typeof itemsString === 'string' ? itemsString : '';
+    const itemsArray = rawText.split(',').map(s => s.trim()).filter(Boolean);
     setResumeData(prev => {
       const updated = [...prev.skills];
-      updated[index] = { category, items: itemsArray };
+      updated[index] = { category, items: itemsArray, rawText };
       return { ...prev, skills: updated };
     });
   };
@@ -460,7 +461,7 @@ export default function ResumeForm({ resumeData, setResumeData }) {
                 <input
                   type="text"
                   value={skillGroup.category}
-                  onChange={e => updateSkillCategory(idx, e.target.value, (skillGroup.items || []).join(', '))}
+                  onChange={e => updateSkillCategory(idx, e.target.value, skillGroup.rawText !== undefined ? skillGroup.rawText : (skillGroup.items || []).join(', '))}
                   placeholder="Category (e.g. Languages & Frameworks)"
                   className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-bold text-indigo-300"
                 />
@@ -476,7 +477,7 @@ export default function ResumeForm({ resumeData, setResumeData }) {
                 <label className="block text-xs font-medium text-slate-400">Skills (Comma-separated)</label>
                 <input
                   type="text"
-                  value={(skillGroup.items || []).join(', ')}
+                  value={skillGroup.rawText !== undefined ? skillGroup.rawText : (skillGroup.items || []).join(', ')}
                   onChange={e => updateSkillCategory(idx, skillGroup.category, e.target.value)}
                   placeholder="Python, React, MySQL, FastAPI, Tailwind CSS, Docker"
                   className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-100"
