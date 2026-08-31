@@ -530,7 +530,7 @@ export default function ResumeForm({ resumeData, setResumeData }) {
                     type="text"
                     value={proj.technologies}
                     onChange={e => updateProject(idx, 'technologies', e.target.value)}
-                    placeholder="React, FastAPI, Supabase, Tailwind CSS"
+                    placeholder="React, FastAPI, PostgreSQL, Tailwind CSS"
                     className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-100"
                   />
                 </div>
@@ -542,7 +542,7 @@ export default function ResumeForm({ resumeData, setResumeData }) {
                   rows={2}
                   value={proj.description}
                   onChange={e => updateProject(idx, 'description', e.target.value)}
-                  placeholder="Developed an automated resume optimization platform using NLP and Supabase Auth."
+                  placeholder="Developed an automated resume optimization platform using NLP and Cloud Auth."
                   className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-100"
                 />
               </div>

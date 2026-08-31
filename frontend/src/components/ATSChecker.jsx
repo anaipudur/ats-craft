@@ -85,7 +85,7 @@ export default function ATSChecker({ isOpen, onClose, resumeData, atsResults, se
             rows={5}
             value={jobDescription}
             onChange={e => setJobDescription(e.target.value)}
-            placeholder="e.g. We are seeking a Senior Software Engineer with strong skills in Python, React, MySQL database optimization, REST APIs, and Supabase cloud infrastructure..."
+            placeholder="e.g. We are seeking a Senior Software Engineer with strong skills in Python, React, MySQL database optimization, REST APIs, and cloud infrastructure..."
             className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3 text-xs text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
           />
           

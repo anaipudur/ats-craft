@@ -108,7 +108,7 @@ export default function PolicyModal({ isOpen, onClose, defaultTab = 'privacy' })
               <div>
                 <h4 className="font-bold text-white text-xs uppercase tracking-wider mb-1">2. Information We Collect</h4>
                 <p className="text-slate-400">
-                  When you use ATSCraft Pro, we collect the resume text and contact information you directly input into the builder. If you register an account, your authentication credentials are encrypted and stored via Supabase Auth with Row Level Security (RLS).
+                  When you use ATSCraft Pro, we collect the resume text and contact information you directly input into the builder. If you register an account, your authentication credentials are encrypted and stored securely using Row Level Security (RLS).
                 </p>
               </div>
 

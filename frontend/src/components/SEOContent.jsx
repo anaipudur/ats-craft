@@ -19,8 +19,8 @@ export default function SEOContent() {
       a: "Complex multi-column layouts, graphics, text boxes, and tables can confuse ATS parsing engines like Workday or Lever. Clean single-column or standard double-column layouts ensure text is extracted linearly in the correct sequence."
     },
     {
-      q: "Can I save my resume directly to Supabase cloud?",
-      a: "Yes! By signing in with Supabase, your resumes, custom ATS scores, and target job descriptions are securely synced across devices using Row Level Security (RLS) PostgreSQL database storage."
+      q: "Can I save my resume directly to the cloud?",
+      a: "Yes! By signing in, your resumes, custom ATS scores, and target job descriptions are securely synced across devices using encrypted database storage."
     }
   ];
 

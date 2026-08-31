@@ -17,10 +17,10 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
     setMessage(null);
 
     if (!isSupabaseConfigured()) {
-      // Offline / local mock mode when Supabase API keys haven't been provided in .env yet
+      // Offline / local mock mode when API keys haven't been provided in .env yet
       setTimeout(() => {
         setUser({ id: 'mock-user-123', email: email || 'demo.user@example.com' });
-        setMessage({ type: 'success', text: 'Logged in as Local Supabase Demo User!' });
+        setMessage({ type: 'success', text: 'Logged in as Demo User!' });
         setLoading(false);
         setTimeout(onClose, 1200);
       }, 600);
@@ -36,7 +36,7 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         setUser(data.user);
-        setMessage({ type: 'success', text: 'Successfully logged in to Supabase!' });
+        setMessage({ type: 'success', text: 'Successfully logged in!' });
         setTimeout(onClose, 1000);
       }
     } catch (err) {
@@ -62,7 +62,7 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-indigo-400" />
-            <h2 className="text-sm font-bold text-white">Supabase Authentication</h2>
+            <h2 className="text-sm font-bold text-white">Account Authentication</h2>
           </div>
           <button 
             onClick={onClose}
@@ -83,14 +83,14 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
               onClick={handleSignOut}
               className="w-full rounded-xl bg-red-600/20 py-2.5 text-xs font-semibold text-red-300 border border-red-500/30 hover:bg-red-600 hover:text-white transition"
             >
-              Sign Out of Supabase
+              Sign Out
             </button>
           </div>
         ) : (
           <form onSubmit={handleAuth} className="space-y-4">
             {!isSupabaseConfigured() && (
               <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-xs text-amber-300">
-                💡 <b>Supabase Status:</b> Running in local demo mode. Add your <code>VITE_SUPABASE_URL</code> in <code>frontend/.env</code> to connect live.
+                💡 <b>Cloud Sync Status:</b> Running in local demo mode. Add your cloud API keys in <code>frontend/.env</code> to connect live.
               </div>
             )}
 
@@ -138,7 +138,7 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
               disabled={loading}
               className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:opacity-50"
             >
-              {loading ? 'Processing...' : isSignUp ? 'Create Supabase Account' : 'Sign In'}
+              {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
             </button>
 
             <div className="text-center pt-2">

@@ -32,7 +32,7 @@ const INITIAL_RESUME_DATA = {
       highlights: [
         "Architected scalable microservices using Python FastAPI and React, serving over 200,000 active monthly users.",
         "Optimized MySQL database query indexes, reducing mean page load response time from 1.2s to 320ms.",
-        "Spearheaded Supabase authentication & Row Level Security (RLS) integration across 4 core client applications."
+        "Spearheaded Cloud authentication & Row Level Security (RLS) integration across 4 core client applications."
       ]
     },
     {
@@ -68,14 +68,14 @@ const INITIAL_RESUME_DATA = {
     },
     {
       category: "Databases & Cloud",
-      items: ["MySQL", "PostgreSQL", "Supabase", "Docker", "Git", "REST APIs"]
+      items: ["MySQL", "PostgreSQL", "Cloud Storage", "Docker", "Git", "REST APIs"]
     }
   ],
   projects: [
     {
       name: "ATS Craft Pro Platform",
-      description: "Built an AI-driven resume optimization and ATS keyword matching web app with Supabase cloud storage.",
-      technologies: "React, Tailwind CSS, Python FastAPI, Supabase",
+      description: "Built an AI-driven resume optimization and ATS keyword matching web app with Cloud storage.",
+      technologies: "React, Tailwind CSS, Python FastAPI, Cloud API",
       link: "https://github.com/alex-mercer/ats-craft"
     }
   ]
@@ -96,7 +96,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [atsResults, setAtsResults] = useState({
     match_score: 85,
-    matched_keywords: ['Python', 'React', 'MySQL', 'FastAPI', 'REST APIs', 'Supabase', 'Docker', 'Git'],
+    matched_keywords: ['Python', 'React', 'MySQL', 'FastAPI', 'REST APIs', 'Cloud Storage', 'Docker', 'Git'],
     missing_keywords: ['AWS Cloud', 'Kubernetes', 'GraphQL'],
     suggestions: [
       "Include quantifiable performance metrics in your latest Nexus Cloud job highlights.",
@@ -258,7 +258,7 @@ export default function App() {
               Build an ATS-Optimized Resume That Wins Interviews
             </h2>
             <p className="mt-1 text-xs sm:text-sm text-slate-300">
-              Live automated keyword match scoring against top recruiters (Workday, Lever, Greenhouse). Built with Python & Supabase.
+              Live automated keyword match scoring against top recruiters (Workday, Lever, Greenhouse). Built with Python & React.
             </p>
           </div>
           <button
@@ -322,7 +322,7 @@ export default function App() {
       {/* Footer */}
       <footer className="no-print border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
         <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 ATSCraft Pro. Powered by Python, React, Tailwind CSS & Supabase.</p>
+          <p>© 2026 ATSCraft Pro. Powered by Python, React & Tailwind CSS.</p>
           <div className="flex items-center gap-4 text-slate-400">
             <button onClick={() => openPolicyModal('privacy')} className="hover:text-indigo-400 transition">Privacy Policy</button>
             <button onClick={() => openPolicyModal('terms')} className="hover:text-indigo-400 transition">Terms of Service</button>

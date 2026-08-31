@@ -29,7 +29,7 @@ export default function Navbar({
                 ATS<span className="text-indigo-400">Craft</span> Pro
               </h1>
               <span className="hidden rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 ring-1 ring-emerald-500/30 sm:inline-block">
-                Supabase Connected
+                Cloud Connected
               </span>
             </div>
             <p className="text-xs text-slate-400 hidden sm:block">AI ATS Resume Builder & Career Suite</p>
@@ -109,14 +109,14 @@ export default function Navbar({
             <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export PDF'}</span>
           </button>
 
-          {/* Supabase User Account Button */}
+          {/* User Account Button */}
           <button
             onClick={onOpenAuth}
             className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs font-medium text-slate-200 transition hover:bg-slate-700"
           >
             <User className="h-4 w-4 text-indigo-400" />
             <span className="hidden md:inline">
-              {user ? (user.email ? user.email.split('@')[0] : 'Account') : 'Supabase Login'}
+              {user ? (user.email ? user.email.split('@')[0] : 'Account') : 'Sign In'}
             </span>
           </button>
         </div>
