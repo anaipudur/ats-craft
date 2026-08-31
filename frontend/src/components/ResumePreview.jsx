@@ -6,13 +6,14 @@ export default function ResumePreview({ resumeData, templateId = 'classic-ats' }
 
   return (
     <div className="w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950 p-2 sm:p-4 shadow-2xl print:border-none print:bg-transparent print:p-0 print:shadow-none print:overflow-visible">
-      <div 
-        id="resume-preview-container"
-        className={`mx-auto bg-white text-slate-900 shadow-xl transition-all duration-300 min-h-[900px] print:min-h-0 print:p-0 print:shadow-none print:border-none print:w-full print:m-0 w-[800px] p-8 sm:p-10 font-sans ${
-          templateId === 'classic-ats' ? 'font-serif text-slate-950' : ''
-        }`}
-        style={{ boxSizing: 'border-box' }}
-      >
+      <div className="mx-auto w-[800px] shadow-xl rounded-sm">
+        <div 
+          id="resume-preview-container"
+          className={`bg-white text-slate-900 transition-all duration-300 min-h-[900px] print:min-h-0 print:p-0 print:shadow-none print:border-none print:w-full print:m-0 w-full p-8 sm:p-10 font-sans ${
+            templateId === 'classic-ats' ? 'font-serif text-slate-950' : ''
+          }`}
+          style={{ boxSizing: 'border-box' }}
+        >
         
         {/* Header Section */}
         <div className={`pb-3 border-b ${templateId === 'modern-pro' ? 'border-indigo-600' : 'border-slate-300'}`}>
@@ -165,5 +166,6 @@ export default function ResumePreview({ resumeData, templateId = 'classic-ats' }
 
       </div>
     </div>
-  );
+  </div>
+);
 }

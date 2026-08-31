@@ -8,6 +8,7 @@ import SEOContent from './components/SEOContent';
 import AdSenseBanner from './components/AdSenseBanner';
 import PolicyModal from './components/PolicyModal';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
+import html2pdf from 'html2pdf.js';
 
 const INITIAL_RESUME_DATA = {
   personal_info: {
@@ -120,14 +121,37 @@ export default function App() {
 
   const [isExporting, setIsExporting] = useState(false);
 
-  // Instant non-blocking Vector ATS PDF export (0ms main-thread CPU lock, 100% ATS text parser compatible)
-  const handleExportPdf = () => {
+  // Direct Vector ATS PDF export download (no browser print dialog)
+  const handleExportPdf = async () => {
+    const element = document.getElementById('resume-preview-container');
+    if (!element) return;
+
     setIsExporting(true);
-    // Small timeout allows button active state to update before opening native print dialog
-    setTimeout(() => {
-      window.print();
+
+    const name = resumeData?.personal_info?.fullName?.trim();
+    const fileName = name ? `${name.replace(/\s+/g, '_')}_Resume.pdf` : 'Resume.pdf';
+
+    const opt = {
+      margin: [0.25, 0.25, 0.25, 0.25],
+      filename: fileName,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        scrollY: 0
+      },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opt).from(element).save();
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+    } finally {
       setIsExporting(false);
-    }, 150);
+    }
   };
 
   const handleLoadSampleData = () => {
