@@ -8,7 +8,8 @@ import SEOContent from './components/SEOContent';
 import AdSenseBanner from './components/AdSenseBanner';
 import PolicyModal from './components/PolicyModal';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const INITIAL_RESUME_DATA = {
   personal_info: {
@@ -121,104 +122,345 @@ export default function App() {
 
   const [isExporting, setIsExporting] = useState(false);
 
-  // Convert any unsupported Tailwind CSS v4 oklch(...) colors to rgb(...) for html2canvas compatibility
-  const replaceOklchInCss = (cssText) => {
-    if (!cssText || !cssText.includes('oklch')) return cssText;
+  /**
+   * Converts ANY CSS color string (including oklch, lab, lch, color()) to a
+   * plain rgb() string by drawing a single pixel on a 2D canvas.
+   * The browser handles all color-space conversion natively.
+   */
+  const colorToRgb = (() => {
+    const cache = new Map();
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-    const dummy = document.createElement('div');
-    dummy.style.display = 'none';
-    document.body.appendChild(dummy);
+    return (cssColor, fallback = 'rgb(0,0,0)') => {
+      if (!cssColor || cssColor === 'none' || cssColor === 'transparent' ||
+          cssColor === 'rgba(0, 0, 0, 0)' || cssColor === 'initial') return cssColor || fallback;
 
-    const colorCache = new Map();
-
-    const sanitized = cssText.replace(/oklch\([^)]+\)/g, (match) => {
-      if (colorCache.has(match)) return colorCache.get(match);
+      if (cache.has(cssColor)) return cache.get(cssColor);
 
       try {
-        dummy.style.color = match;
-        const computed = window.getComputedStyle(dummy).color;
-        const rgbColor = (computed && computed !== '' && !computed.includes('oklch')) 
-          ? computed 
-          : 'rgb(0, 0, 0)';
-        colorCache.set(match, rgbColor);
-        return rgbColor;
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = cssColor;          // browser resolves oklch → sRGB here
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+        const result = a < 255 ? `rgba(${r},${g},${b},${(a / 255).toFixed(3)})` : `rgb(${r},${g},${b})`;
+        cache.set(cssColor, result);
+        return result;
       } catch {
-        return 'rgb(0, 0, 0)';
+        cache.set(cssColor, fallback);
+        return fallback;
+      }
+    };
+  })();
+
+  /**
+   * Builds a fully self-contained, class-free DOM element with every computed
+   * style inlined as a style="" attribute. All colors are converted to plain
+   * rgb() so html2canvas never encounters oklch() anywhere.
+   */
+  const buildInlineStyledClone = (sourceEl) => {
+    const clone = sourceEl.cloneNode(true);
+    clone.removeAttribute('class');
+
+    const sourceNodes = [sourceEl, ...sourceEl.querySelectorAll('*')];
+    const cloneNodes  = [clone,    ...clone.querySelectorAll('*')];
+
+    sourceNodes.forEach((src, i) => {
+      const dst = cloneNodes[i];
+      if (!dst) return;
+
+      dst.removeAttribute('class');
+
+      const cs  = window.getComputedStyle(src);
+      const tag = src.tagName.toLowerCase();
+
+      // Convert any CSS color (incl. oklch) to a safe rgb() string
+      const c = (val, fallback) => colorToRgb(val, fallback);
+
+      if (tag === 'svg') {
+        // IMPORTANT: Lucide SVGs have hardcoded width="24" height="24" HTML attributes,
+        // but CSS classes like w-3/h-3 override them to 12px at render time.
+        // Always prefer the CSS computed size — it reflects class overrides.
+        const wPx = (parseFloat(cs.width)  > 0 ? parseFloat(cs.width)  : null)
+                 ?? parseFloat(src.getAttribute('width'))
+                 ?? 12;
+        const hPx = (parseFloat(cs.height) > 0 ? parseFloat(cs.height) : null)
+                 ?? parseFloat(src.getAttribute('height'))
+                 ?? 12;
+        dst.setAttribute('width',   wPx);
+        dst.setAttribute('height',  hPx);
+        dst.setAttribute('viewBox', src.getAttribute('viewBox') || '0 0 24 24');
+        // Copy all SVG presentation attributes (stroke-width, linecap, etc.)
+        ['stroke-width','stroke-linecap','stroke-linejoin','stroke-miterlimit',
+         'fill-rule','clip-rule','stroke-dasharray','stroke-dashoffset'
+        ].forEach(attr => { const v = src.getAttribute(attr); if (v) dst.setAttribute(attr, v); });
+        const stroke = c(cs.stroke !== 'none' ? cs.stroke : cs.color, 'rgb(100,116,139)');
+        const fill   = cs.fill !== 'none' ? c(cs.fill, 'none') : 'none';
+        dst.setAttribute('stroke', stroke);
+        dst.setAttribute('fill',   fill);
+        // html2canvas doesn't reliably apply flex align-items:center to SVG children.
+        // Manually compute margin-top to center the icon within its parent's line height.
+        const parentEl = src.parentElement;
+        const parentCs = parentEl ? window.getComputedStyle(parentEl) : null;
+        let svgMarginTop = 0;
+        if (parentCs) {
+          // lineHeight can be "normal" → fall back to fontSize × 1.2
+          const lineH = parseFloat(parentCs.lineHeight) || (parseFloat(parentCs.fontSize) * 1.2);
+          if (lineH > hPx) {
+            svgMarginTop = Math.round((lineH - hPx) / 2);
+          }
+        }
+        dst.style.cssText = `display:block;width:${wPx}px;height:${hPx}px;flex-shrink:0;margin-top:${svgMarginTop}px;stroke:${stroke};fill:${fill};overflow:visible;`;
+
+      } else if (tag === 'path' || tag === 'g' || tag === 'circle' || tag === 'rect' || tag === 'line' || tag === 'polyline' || tag === 'polygon') {
+        // SVG children — copy presentation attributes from source
+        ['fill','stroke','stroke-width','stroke-linecap','stroke-linejoin',
+         'fill-rule','clip-rule','d','cx','cy','r','rx','ry','x','y','x1','y1','x2','y2','points'
+        ].forEach(attr => { const v = src.getAttribute(attr); if (v !== null) dst.setAttribute(attr, v); });
+        dst.style.cssText = '';
+
+      } else {
+        // Regular HTML elements
+        const color   = c(cs.color,           'rgb(15,23,42)');
+        const bgColor = c(cs.backgroundColor, 'transparent');
+        const bdrTopC = c(cs.borderTopColor,    'transparent');
+        const bdrBotC = c(cs.borderBottomColor, 'transparent');
+        const bdrLftC = c(cs.borderLeftColor,   'transparent');
+        const bdrRgtC = c(cs.borderRightColor,  'transparent');
+
+        const isFlex   = cs.display === 'flex' || cs.display === 'inline-flex';
+        const isInline = cs.display === 'inline' || cs.display === 'inline-block' || cs.display === 'inline-flex';
+
+        // Flex containers must NOT have a fixed height — they size naturally
+        // around their children. Fixed height prevents align-items:center from
+        // working correctly when font metrics differ slightly in the iframe.
+        const heightVal   = isFlex ? 'auto' : cs.height;
+        const minHeightVal = (cs.minHeight === 'none' || cs.minHeight === '0px') ? '0' : cs.minHeight;
+
+        // Inline elements should not have a fixed width — let content flow naturally
+        const widthVal = isInline ? 'auto' : cs.width;
+
+        dst.style.cssText = [
+          `color:${color}`,
+          `background-color:${bgColor}`,
+          `font-family:${cs.fontFamily}`,
+          `font-size:${cs.fontSize}`,
+          `font-weight:${cs.fontWeight}`,
+          `font-style:${cs.fontStyle}`,
+          `line-height:${cs.lineHeight}`,
+          `text-transform:${cs.textTransform}`,
+          `letter-spacing:${cs.letterSpacing}`,
+          `text-align:${cs.textAlign}`,
+          `vertical-align:${cs.verticalAlign}`,
+          `white-space:${cs.whiteSpace}`,
+          `word-break:${cs.wordBreak}`,
+          `display:${cs.display}`,
+          `flex-direction:${cs.flexDirection}`,
+          `flex-wrap:${cs.flexWrap}`,
+          `flex-grow:${cs.flexGrow}`,
+          `flex-shrink:${cs.flexShrink}`,
+          `align-items:${cs.alignItems}`,
+          `align-self:${cs.alignSelf}`,
+          `justify-content:${cs.justifyContent}`,
+          `justify-self:${cs.justifySelf}`,
+          `gap:${cs.gap}`,
+          `column-gap:${cs.columnGap}`,
+          `row-gap:${cs.rowGap}`,
+          `width:${widthVal}`,
+          `max-width:${cs.maxWidth}`,
+          `min-width:${cs.minWidth}`,
+          `height:${heightVal}`,
+          `min-height:${minHeightVal}`,
+          `padding:${cs.padding}`,
+          `margin:${cs.margin}`,
+          `border-top:${cs.borderTopWidth} ${cs.borderTopStyle} ${bdrTopC}`,
+          `border-bottom:${cs.borderBottomWidth} ${cs.borderBottomStyle} ${bdrBotC}`,
+          `border-left:${cs.borderLeftWidth} ${cs.borderLeftStyle} ${bdrLftC}`,
+          `border-right:${cs.borderRightWidth} ${cs.borderRightStyle} ${bdrRgtC}`,
+          `border-radius:${cs.borderRadius}`,
+          `box-sizing:border-box`,
+          `overflow:visible`,
+          `list-style:${cs.listStyle}`,
+          `opacity:${cs.opacity}`,
+          `position:${(cs.position === 'fixed' || cs.position === 'sticky') ? 'static' : cs.position}`,
+        ].join(';');
       }
     });
 
-    document.body.removeChild(dummy);
-    return sanitized;
+    // Force root container
+    clone.style.width      = '800px';
+    clone.style.maxWidth   = '800px';
+    clone.style.minHeight  = 'auto';
+    clone.style.background = '#ffffff';
+    clone.style.color      = '#0f172a';
+    clone.style.padding    = '40px';
+    clone.style.boxSizing  = 'border-box';
+    clone.style.boxShadow  = 'none';
+
+    // ── SECOND PASS: SVG → <img data-url> ───────────────────────────────────
+    // html2canvas silently ignores flex align-items:center for SVG children —
+    // they always land at the top edge. No CSS trick fixes this.
+    // Solution: serialize each SVG to a data:image/svg+xml URL and replace it
+    // with an <img>. Images with vertical-align:middle work perfectly in
+    // html2canvas because the inline layout path is well-tested.
+    const xmls = new XMLSerializer();
+    clone.querySelectorAll('svg').forEach(svg => {
+      try {
+        const wPx = parseFloat(svg.style.width)  || parseFloat(svg.getAttribute('width'))  || 12;
+        const hPx = parseFloat(svg.style.height) || parseFloat(svg.getAttribute('height')) || 12;
+
+        const svgStr  = xmls.serializeToString(svg);
+        const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.setAttribute('width',  wPx);
+        img.setAttribute('height', hPx);
+        img.style.cssText = `display:inline-block;vertical-align:middle;width:${wPx}px;height:${hPx}px;flex-shrink:0;`;
+
+        svg.parentNode.replaceChild(img, svg);
+
+        // Also patch the direct parent so inline-block children flow correctly
+        const parent = img.parentElement;
+        if (parent) {
+          parent.style.display       = 'inline-block';
+          parent.style.whiteSpace    = 'nowrap';
+          parent.style.height        = 'auto';
+          parent.style.verticalAlign = 'middle';
+          Array.from(parent.children).forEach(child => {
+            if (child !== img) {
+              child.style.display       = 'inline';
+              child.style.verticalAlign = 'middle';
+            }
+          });
+        }
+      } catch (_) {
+        svg.style.display = 'none'; // fallback: hide broken icon
+      }
+    });
+
+    // ── THIRD PASS: fix list bullet overflow ─────────────────────────────────
+    // html2canvas renders native `list-item` bullets (::marker) with a negative
+    // offset outside the element's bounding box, spilling into the page margin.
+    // We force list-style: none on all ul, ol, and li elements so html2canvas
+    // never renders its buggy native markers.
+    clone.querySelectorAll('ul, ol').forEach(list => {
+      list.style.listStyle         = 'none';
+      list.style.listStyleType     = 'none';
+      list.style.listStylePosition = 'inside';
+      list.style.paddingLeft       = '0';
+      list.style.marginLeft        = '0';
+    });
+    clone.querySelectorAll('li').forEach(li => {
+      li.style.listStyle           = 'none';
+      li.style.listStyleType       = 'none';
+      li.style.listStylePosition   = 'inside';
+      li.style.paddingLeft         = '0';
+      li.style.marginLeft          = '0';
+      if (li.style.display === 'list-item') {
+        li.style.display = 'block';
+      }
+    });
+
+    return clone;
   };
 
   // Direct Vector ATS PDF export download (no browser print dialog)
   const handleExportPdf = async () => {
-    const element = document.getElementById('resume-preview-container');
-    if (!element) return;
+    const sourceEl = document.getElementById('resume-preview-container');
+    if (!sourceEl) return;
 
     setIsExporting(true);
 
     const name = resumeData?.personal_info?.fullName?.trim();
     const fileName = name ? `${name.replace(/\s+/g, '_')}_Resume.pdf` : 'Resume.pdf';
 
-    const opt = {
-      margin: [0.25, 0.25, 0.25, 0.25],
-      filename: fileName,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
+    // Build a class-free, fully inline-styled clone
+    const inlineClone = buildInlineStyledClone(sourceEl);
+
+    // Scrub any oklch values that leaked through getComputedStyle
+    const rawHtml =
+      '<!DOCTYPE html><html style="background:#ffffff;margin:0;padding:0"><head><meta charset="UTF-8">'
+      + '<style>*{box-sizing:border-box}html,body{background:#ffffff!important;margin:0;padding:0;color:#0f172a}</style>'
+      + '</head><body style="background:#ffffff;margin:0;padding:0">'
+      + inlineClone.outerHTML + '</body></html>';
+    const standaloneHtml = rawHtml.replace(/oklch\([^)]*\)/gi, 'rgb(15,23,42)');
+
+    // Hidden iframe whose document has ZERO Tailwind stylesheets
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;left:0;top:0;width:800px;height:2000px;border:none;';
+    document.body.appendChild(iframe);
+
+    try {
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(standaloneHtml);
+      iframe.contentDocument.close();
+
+      await new Promise(r => setTimeout(r, 300));
+
+      const iframeDoc = iframe.contentDocument;
+      iframeDoc.documentElement.style.backgroundColor = '#ffffff';
+      iframeDoc.body.style.backgroundColor = '#ffffff';
+
+      const iframeEl = iframeDoc.getElementById('resume-preview-container');
+      if (!iframeEl) throw new Error('Resume element not found in iframe.');
+
+      // ── Call html2canvas DIRECTLY (bypasses html2pdf.js toContainer() which
+      //    re-injects the element into the main document where Tailwind lives) ──
+      // html2canvas uses iframeEl.ownerDocument (the clean iframe doc) for ALL
+      // CSS lookups — no oklch anywhere in that document.
+      const canvas = await html2canvas(iframeEl, {
         scale: 2,
         useCORS: true,
         logging: false,
-        scrollY: 0,
-        onclone: (clonedDoc) => {
-          const newStyleElements = [];
+        width: 800,
+        windowWidth: 800,
+        backgroundColor: '#ffffff',
+      });
 
-          Array.from(document.styleSheets).forEach((sheet) => {
-            try {
-              let cssText = '';
-              if (sheet.cssRules) {
-                cssText = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
-              }
-              if (cssText) {
-                const sanitizedCss = replaceOklchInCss(cssText);
-                const styleEl = clonedDoc.createElement('style');
-                styleEl.textContent = sanitizedCss;
-                newStyleElements.push(styleEl);
-              }
-            } catch (e) {
-              console.warn('Could not process stylesheet for html2canvas:', e);
-            }
-          });
+      // ── Build PDF directly with jsPDF ──────────────────────────────────────
+      const pdf = new jsPDF({ unit: 'in', format: 'letter', orientation: 'portrait' });
+      const margin    = 0.2;
+      const pageW     = pdf.internal.pageSize.getWidth();
+      const pageH     = pdf.internal.pageSize.getHeight();
+      const printW    = pageW - 2 * margin;
+      const printH    = pageH - 2 * margin;
+      const imgData   = canvas.toDataURL('image/jpeg', 0.98);
+      const imgAspect = canvas.height / canvas.width;
+      const imgH      = printW * imgAspect;
 
-          if (newStyleElements.length > 0) {
-            clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(el => el.remove());
-            newStyleElements.forEach(styleEl => clonedDoc.head.appendChild(styleEl));
-          } else {
-            clonedDoc.querySelectorAll('style').forEach((styleEl) => {
-              if (styleEl.textContent && styleEl.textContent.includes('oklch')) {
-                styleEl.textContent = replaceOklchInCss(styleEl.textContent);
-              }
-            });
-          }
-
-          clonedDoc.querySelectorAll('*').forEach((el) => {
-            const inlineStyle = el.getAttribute('style');
-            if (inlineStyle && inlineStyle.includes('oklch')) {
-              el.setAttribute('style', replaceOklchInCss(inlineStyle));
-            }
-          });
+      if (imgH <= printH) {
+        // Single page
+        pdf.addImage(imgData, 'JPEG', margin, margin, printW, imgH);
+      } else {
+        // Multi-page: slice canvas into letter-height segments
+        const pageCanvas  = document.createElement('canvas');
+        const pxPerInch   = canvas.width / printW;
+        const pageHeightPx = Math.floor(printH * pxPerInch);
+        pageCanvas.width  = canvas.width;
+        pageCanvas.height = pageHeightPx;
+        const ctx = pageCanvas.getContext('2d');
+        let offsetY = 0;
+        let firstPage = true;
+        while (offsetY < canvas.height) {
+          if (!firstPage) pdf.addPage();
+          firstPage = false;
+          ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(canvas, 0, -offsetY);
+          const sliceData = pageCanvas.toDataURL('image/jpeg', 0.98);
+          const sliceH    = Math.min(printH, (canvas.height - offsetY) / pxPerInch);
+          pdf.addImage(sliceData, 'JPEG', margin, margin, printW, sliceH);
+          offsetY += pageHeightPx;
         }
-      },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+      }
 
-    try {
-      await html2pdf().set(opt).from(element).save();
+      pdf.save(fileName);
     } catch (error) {
-      console.error('PDF Export Error, falling back to print:', error);
-      window.print();
+      console.error('PDF Export Error:', error);
+      alert('PDF export failed. Please try again.');
     } finally {
+      try { document.body.removeChild(iframe); } catch (_) {}
       setIsExporting(false);
     }
   };

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Globe, ExternalLink } from 'lucide-react';
 
 export default function ResumePreview({ resumeData, templateId = 'classic-ats' }) {
   const { personal_info = {}, summary = '', work_experience = [], education = [], skills = [], projects = [] } = resumeData;
@@ -30,25 +29,25 @@ export default function ResumePreview({ resumeData, templateId = 'classic-ats' }
           <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
             {personal_info.email && (
               <span className="flex items-center gap-1">
-                <Mail className="h-3 w-3 no-print text-slate-400" />
+                <span className="text-slate-400 text-xs leading-none" aria-hidden="true">✉</span>
                 <span>{personal_info.email}</span>
               </span>
             )}
             {personal_info.phone && (
               <span className="flex items-center gap-1">
-                <Phone className="h-3 w-3 no-print text-slate-400" />
+                <span className="text-slate-400 text-xs leading-none" aria-hidden="true">✆</span>
                 <span>{personal_info.phone}</span>
               </span>
             )}
             {personal_info.location && (
               <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3 no-print text-slate-400" />
+                <span className="text-slate-400 text-xs leading-none" aria-hidden="true">⊙</span>
                 <span>{personal_info.location}</span>
               </span>
             )}
             {personal_info.linkedin && (
               <span className="flex items-center gap-1">
-                <Globe className="h-3 w-3 no-print text-slate-400" />
+                <span className="text-slate-400 text-xs leading-none" aria-hidden="true">⊕</span>
                 <span>{personal_info.linkedin}</span>
               </span>
             )}
@@ -87,10 +86,11 @@ export default function ResumePreview({ resumeData, templateId = 'classic-ats' }
                   <div className="text-xs font-semibold text-indigo-800">{exp.company}</div>
                   
                   {exp.highlights && exp.highlights.length > 0 && (
-                    <ul className="mt-1 list-disc list-inside space-y-0.5 text-xs text-slate-700">
+                    <ul className="mt-1 space-y-1 text-xs text-slate-700 list-none p-0 m-0">
                       {exp.highlights.filter(h => h && h.trim()).map((hl, hIdx) => (
-                        <li key={hIdx} className="leading-snug">
-                          {hl}
+                        <li key={hIdx} className="leading-snug flex items-start gap-1.5 list-none p-0 m-0">
+                          <span className="text-slate-400 select-none shrink-0 font-bold leading-snug">•</span>
+                          <span className="flex-1">{hl}</span>
                         </li>
                       ))}
                     </ul>
