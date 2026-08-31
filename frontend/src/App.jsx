@@ -121,6 +121,36 @@ export default function App() {
 
   const [isExporting, setIsExporting] = useState(false);
 
+  // Convert any unsupported Tailwind CSS v4 oklch(...) colors to rgb(...) for html2canvas compatibility
+  const replaceOklchInCss = (cssText) => {
+    if (!cssText || !cssText.includes('oklch')) return cssText;
+
+    const dummy = document.createElement('div');
+    dummy.style.display = 'none';
+    document.body.appendChild(dummy);
+
+    const colorCache = new Map();
+
+    const sanitized = cssText.replace(/oklch\([^)]+\)/g, (match) => {
+      if (colorCache.has(match)) return colorCache.get(match);
+
+      try {
+        dummy.style.color = match;
+        const computed = window.getComputedStyle(dummy).color;
+        const rgbColor = (computed && computed !== '' && !computed.includes('oklch')) 
+          ? computed 
+          : 'rgb(0, 0, 0)';
+        colorCache.set(match, rgbColor);
+        return rgbColor;
+      } catch {
+        return 'rgb(0, 0, 0)';
+      }
+    });
+
+    document.body.removeChild(dummy);
+    return sanitized;
+  };
+
   // Direct Vector ATS PDF export download (no browser print dialog)
   const handleExportPdf = async () => {
     const element = document.getElementById('resume-preview-container');
@@ -139,7 +169,45 @@ export default function App() {
         scale: 2,
         useCORS: true,
         logging: false,
-        scrollY: 0
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          const newStyleElements = [];
+
+          Array.from(document.styleSheets).forEach((sheet) => {
+            try {
+              let cssText = '';
+              if (sheet.cssRules) {
+                cssText = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
+              }
+              if (cssText) {
+                const sanitizedCss = replaceOklchInCss(cssText);
+                const styleEl = clonedDoc.createElement('style');
+                styleEl.textContent = sanitizedCss;
+                newStyleElements.push(styleEl);
+              }
+            } catch (e) {
+              console.warn('Could not process stylesheet for html2canvas:', e);
+            }
+          });
+
+          if (newStyleElements.length > 0) {
+            clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(el => el.remove());
+            newStyleElements.forEach(styleEl => clonedDoc.head.appendChild(styleEl));
+          } else {
+            clonedDoc.querySelectorAll('style').forEach((styleEl) => {
+              if (styleEl.textContent && styleEl.textContent.includes('oklch')) {
+                styleEl.textContent = replaceOklchInCss(styleEl.textContent);
+              }
+            });
+          }
+
+          clonedDoc.querySelectorAll('*').forEach((el) => {
+            const inlineStyle = el.getAttribute('style');
+            if (inlineStyle && inlineStyle.includes('oklch')) {
+              el.setAttribute('style', replaceOklchInCss(inlineStyle));
+            }
+          });
+        }
       },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -148,7 +216,8 @@ export default function App() {
     try {
       await html2pdf().set(opt).from(element).save();
     } catch (error) {
-      console.error('PDF Export Error:', error);
+      console.error('PDF Export Error, falling back to print:', error);
+      window.print();
     } finally {
       setIsExporting(false);
     }
