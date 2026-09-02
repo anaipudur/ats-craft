@@ -63,7 +63,8 @@ export default function ATSChecker({
     let auditData = null;
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/ats-score', {
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://ats-craft-api.vercel.app').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/ats-score`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
