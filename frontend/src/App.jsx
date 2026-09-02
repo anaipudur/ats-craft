@@ -95,6 +95,11 @@ export default function App() {
     setIsPolicyOpen(true);
   };
   const [user, setUser] = useState(null);
+  const [currentResumeId, setCurrentResumeId] = useState(null);
+  const [isSavingResume, setIsSavingResume] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('idle');
+  const [saveNotification, setSaveNotification] = useState(null);
+
   const [atsResults, setAtsResults] = useState({
     match_score: 85,
     matched_keywords: ['Python', 'React', 'MySQL', 'FastAPI', 'REST APIs', 'Cloud Storage', 'Docker', 'Git'],
@@ -105,20 +110,163 @@ export default function App() {
     ]
   });
 
+  const loadUserResume = async (userId) => {
+    if (!isSupabaseConfigured() || !userId || userId === 'mock-user-123') return;
+    try {
+      const { data, error } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.warn('Error fetching resume from Supabase:', error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const remote = data[0];
+        setCurrentResumeId(remote.id);
+        if (remote.template_id) {
+          setActiveTemplate(remote.template_id);
+        }
+        setResumeData({
+          personal_info: remote.personal_info || INITIAL_RESUME_DATA.personal_info,
+          summary: remote.summary ?? '',
+          work_experience: Array.isArray(remote.work_experience) ? remote.work_experience : [],
+          education: Array.isArray(remote.education) ? remote.education : [],
+          skills: Array.isArray(remote.skills) ? remote.skills : [],
+          projects: Array.isArray(remote.projects) ? remote.projects : [],
+          certifications: Array.isArray(remote.certifications) ? remote.certifications : []
+        });
+        setSaveNotification({
+          type: 'success',
+          message: `Synced latest saved resume from Cloud ("${remote.title || 'My ATS Resume'}")`
+        });
+        setTimeout(() => setSaveNotification(null), 3500);
+      }
+    } catch (err) {
+      console.error('Error in loadUserResume:', err);
+    }
+  };
+
   // Listen for Supabase Auth state changes
   useEffect(() => {
     if (isSupabaseConfigured()) {
       supabase.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser?.id) {
+          loadUserResume(currentUser.id);
+        }
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser?.id) {
+          loadUserResume(currentUser.id);
+        } else {
+          setCurrentResumeId(null);
+        }
       });
 
       return () => subscription.unsubscribe();
     }
   }, []);
+
+  const handleSaveResume = async () => {
+    if (!user) {
+      setIsAuthOpen(true);
+      return null;
+    }
+
+    setIsSavingResume(true);
+    setSaveStatus('saving');
+
+    if (!isSupabaseConfigured() || user.id === 'mock-user-123') {
+      try {
+        localStorage.setItem('ats_craft_resume_demo', JSON.stringify(resumeData));
+        await new Promise(r => setTimeout(r, 400));
+        setSaveStatus('saved');
+        setSaveNotification({ type: 'success', message: 'Resume draft saved locally (Demo mode).' });
+        setTimeout(() => {
+          setSaveStatus('idle');
+          setSaveNotification(null);
+        }, 3000);
+        return 'mock-resume-123';
+      } catch (e) {
+        setSaveStatus('error');
+        return null;
+      } finally {
+        setIsSavingResume(false);
+      }
+    }
+
+    try {
+      const payload = {
+        user_id: user.id,
+        title: resumeData.personal_info?.fullName 
+          ? `${resumeData.personal_info.fullName.trim()}'s ATS Resume` 
+          : 'My ATS Resume',
+        target_role: resumeData.personal_info?.jobTitle || '',
+        template_id: activeTemplate,
+        personal_info: resumeData.personal_info || {},
+        summary: resumeData.summary || '',
+        work_experience: resumeData.work_experience || [],
+        education: resumeData.education || [],
+        skills: resumeData.skills || [],
+        projects: resumeData.projects || [],
+        certifications: resumeData.certifications || [],
+        updated_at: new Date().toISOString()
+      };
+
+      let activeId = currentResumeId;
+      if (currentResumeId) {
+        const { data, error } = await supabase
+          .from('resumes')
+          .update(payload)
+          .eq('id', currentResumeId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data?.id) activeId = data.id;
+      } else {
+        const { data, error } = await supabase
+          .from('resumes')
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data?.id) {
+          activeId = data.id;
+          setCurrentResumeId(data.id);
+        }
+      }
+
+      setSaveStatus('saved');
+      setSaveNotification({ type: 'success', message: 'Resume successfully saved to Supabase Cloud!' });
+      setTimeout(() => {
+        setSaveStatus('idle');
+        setSaveNotification(null);
+      }, 3000);
+      return activeId;
+    } catch (err) {
+      console.error('Error saving resume to Supabase:', err);
+      setSaveStatus('error');
+      setSaveNotification({ type: 'error', message: `Save error: ${err.message || 'Failed to persist'}` });
+      setTimeout(() => {
+        setSaveStatus('idle');
+        setSaveNotification(null);
+      }, 4000);
+      return null;
+    } finally {
+      setIsSavingResume(false);
+    }
+  };
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -475,11 +623,22 @@ export default function App() {
       {/* Top Header Leaderboard AdSense Slot */}
       <AdSenseBanner type="leaderboard" slot="5566778899" className="no-print my-0" />
 
+      {/* Save / Cloud Notification Banner */}
+      {saveNotification && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-2xl border border-indigo-500/30 bg-slate-900/95 p-4 shadow-2xl backdrop-blur-md animate-fade-in">
+          <span className={`h-2.5 w-2.5 rounded-full ${saveNotification.type === 'success' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+          <p className="text-xs font-semibold text-slate-200">{saveNotification.message}</p>
+        </div>
+      )}
+
       {/* Navbar Header */}
       <div className="no-print">
         <Navbar
           onExportPdf={handleExportPdf}
           isExporting={isExporting}
+          onSaveResume={handleSaveResume}
+          isSaving={isSavingResume}
+          saveStatus={saveStatus}
           onToggleAts={() => setIsAtsOpen(true)}
           atsScore={atsResults.match_score}
           user={user}
@@ -546,6 +705,11 @@ export default function App() {
         resumeData={resumeData}
         atsResults={atsResults}
         setAtsResults={setAtsResults}
+        user={user}
+        currentResumeId={currentResumeId}
+        setCurrentResumeId={setCurrentResumeId}
+        onSaveResume={handleSaveResume}
+        activeTemplate={activeTemplate}
       />
 
       {/* Modal: Supabase Auth */}

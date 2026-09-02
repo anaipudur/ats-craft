@@ -1,9 +1,12 @@
 import React from 'react';
-import { FileText, Download, Sparkles, User, RefreshCw, Loader2 } from 'lucide-react';
+import { FileText, Download, Sparkles, User, RefreshCw, Loader2, Cloud, Check } from 'lucide-react';
 
 export default function Navbar({ 
   onExportPdf, 
   isExporting = false,
+  onSaveResume,
+  isSaving = false,
+  saveStatus = 'idle',
   onToggleAts, 
   atsScore, 
   user, 
@@ -92,6 +95,29 @@ export default function Navbar({
             <span>ATS Score:</span>
             <span className="rounded-md bg-emerald-950/60 px-1.5 py-0.5 font-mono text-emerald-200">
               {atsScore}%
+            </span>
+          </button>
+
+          {/* Cloud Save Button */}
+          <button
+            onClick={onSaveResume}
+            disabled={isSaving}
+            title={user ? "Save Resume to Supabase Cloud" : "Sign in to save your resume to cloud"}
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold shadow-md transition active:scale-95 disabled:opacity-60 ${
+              saveStatus === 'saved'
+                ? 'bg-emerald-600 text-white shadow-emerald-600/20'
+                : 'border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 shadow-indigo-500/10'
+            }`}
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-300" />
+            ) : saveStatus === 'saved' ? (
+              <Check className="h-3.5 w-3.5 text-white" />
+            ) : (
+              <Cloud className="h-3.5 w-3.5 text-indigo-400" />
+            )}
+            <span className="hidden sm:inline">
+              {isSaving ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
             </span>
           </button>
 

@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export default function AuthModal({ isOpen, onClose, user, setUser }) {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,7 +20,11 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
     if (!isSupabaseConfigured()) {
       // Offline / local mock mode when API keys haven't been provided in .env yet
       setTimeout(() => {
-        setUser({ id: 'mock-user-123', email: email || 'demo.user@example.com' });
+        setUser({ 
+          id: 'mock-user-123', 
+          email: email || 'demo.user@example.com',
+          user_metadata: { full_name: fullName.trim() || 'Demo User' }
+        });
         setMessage({ type: 'success', text: 'Logged in as Demo User!' });
         setLoading(false);
         setTimeout(onClose, 1200);
@@ -29,7 +34,15 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              full_name: fullName.trim() || undefined
+            }
+          }
+        });
         if (error) throw error;
         setMessage({ type: 'success', text: 'Account created! Please check your email to verify.' });
       } else {
@@ -100,6 +113,23 @@ export default function AuthModal({ isOpen, onClose, user, setUser }) {
               }`}>
                 {message.type === 'success' ? <CheckCircle className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
                 <span>{message.text}</span>
+              </div>
+            )}
+
+            {isSignUp && (
+              <div>
+                <label className="block text-xs font-medium text-slate-300">Full Name</label>
+                <div className="relative mt-1">
+                  <UserCheck className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    placeholder="e.g. Alex Mercer"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
               </div>
             )}
 
