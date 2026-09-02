@@ -63,7 +63,14 @@ export default function ATSChecker({
     let auditData = null;
 
     try {
-      const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://ats-craft-api.vercel.app').replace(/\/+$/, '');
+      const rawApiBase = import.meta.env.VITE_API_BASE_URL;
+      const apiBase = (rawApiBase && !rawApiBase.includes('127.0.0.1') && !rawApiBase.includes('localhost')
+        ? rawApiBase 
+        : 'https://ats-craft-api.vercel.app'
+      ).replace(/\/+$/, '');
+
+      console.log(`[ATS Engine] Sending scan request to: ${apiBase}/api/ats-score`);
+
       const response = await fetch(`${apiBase}/api/ats-score`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
